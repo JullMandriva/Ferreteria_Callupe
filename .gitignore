@@ -1,0 +1,62 @@
+# =========================================
+# ARCHIVOS CON CREDENCIALES (NUNCA SUBIR)
+# =========================================
+
+config.php
+.env
+*.env
+*.key
+*.pem
+
+# =========================================
+# ARCHIVOS DEL SISTEMA / WINDOWS / ONEDRIVE
+# =========================================
+
+Thumbs.db
+desktop.ini
+ehthumbs.db
+*.lnk
+.DS_Store
+
+# =========================================
+# ARCHIVOS TEMPORALES Y LOGS
+# =========================================
+
+*.tmp
+*.log
+*.bak
+*.cache
+*.swp
+
+# =========================================
+# EDITORES (VS CODE, PHPSTORM, SUBLIME)
+# =========================================
+
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# =========================================
+# COMPOSER / PHP (si algún día usas Composer)
+# =========================================
+
+vendor/
+
+# =========================================
+# BACKUPS AUTOMÁTICOS
+# =========================================
+
+backup/
+backups/
+*.sql.gz
+*.sql.zip
+
+# =========================================
+# BASE DE DATOS
+# (Ignoramos dumps automáticos grandes)
+# PERO no ignoramos TU archivo manual
+# =========================================
+
+# Asegurar que SÍ se incluya tu archivo:
+!database/database.sql
