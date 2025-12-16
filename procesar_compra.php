@@ -2,107 +2,166 @@
 session_start();
 include 'config/db.php';
 
-// Habilitar la visualización de errores para depuración
+// Habilitar errores
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Función para registrar en el log del servidor
-function logDebug($message) {
-    error_log("[DEBUG] " . $message);
-}
-
-// Cabecera para respuesta JSON
 header('Content-Type: application/json');
 
-logDebug("Iniciando procesar_compra.php");
-logDebug("Método de solicitud: " . $_SERVER['REQUEST_METHOD']);
-
+// Verificar carrito
 if (!isset($_SESSION['carrito']) || empty($_SESSION['carrito'])) {
-    logDebug("Carrito vacío");
     echo json_encode(['success' => false, 'message' => 'El carrito está vacío']);
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
-        // Registrar datos recibidos
-        logDebug("Datos POST recibidos: " . print_r($_POST, true));
+        // Obtener usuario "Sistema" para ventas web
+        $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE email = 'sistema@ferreteria.com' OR rol = 'admin' LIMIT 1");
+        $stmt->execute();
+        $usuario_sistema = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        // Recibir datos del cliente
+        $id_usuario = $usuario_sistema['id'] ?? 1; // Usar id 1 como fallback
+        
+        // Datos del cliente
         $tipo_comprobante = $_POST['tipo_comprobante'] ?? '';
-        $nombre_cliente = $_POST['nombre_cliente'] ?? '';
+        $nombre_cliente = trim($_POST['nombre_cliente'] ?? '');
         $tipo_documento = $_POST['tipo_documento'] ?? '';
-        $numero_documento = $_POST['numero_documento'] ?? '';
-        $email_cliente = $_POST['email_cliente'] ?? '';
-        $telefono_cliente = $_POST['telefono_cliente'] ?? '';
-        $direccion_cliente = $_POST['direccion_cliente'] ?? '';
+        $numero_documento = trim($_POST['numero_documento'] ?? '');
+        $email_cliente = trim($_POST['email_cliente'] ?? '');
+        $telefono_cliente = trim($_POST['telefono_cliente'] ?? '');
+        $direccion_cliente = trim($_POST['direccion_cliente'] ?? '');
         
-        logDebug("Tipo comprobante: $tipo_comprobante");
-        logDebug("Nombre cliente: $nombre_cliente");
+        // Validaciones
+        if (empty($nombre_cliente)) {
+            throw new Exception('Ingrese su nombre completo');
+        }
         
-        // Validar datos mínimos
-        if (empty($tipo_comprobante) || empty($nombre_cliente) || empty($tipo_documento) || empty($numero_documento)) {
-            logDebug("Faltan datos obligatorios");
-            echo json_encode(['success' => false, 'message' => 'Faltan datos obligatorios']);
-            exit;
+        if (empty($tipo_documento)) {
+            throw new Exception('Seleccione tipo de documento');
+        }
+        
+        if (empty($numero_documento)) {
+            throw new Exception('Ingrese número de documento');
+        }
+        
+        if (empty($telefono_cliente)) {
+            throw new Exception('Ingrese su teléfono');
+        }
+        
+        // Validar formato de documento
+        if ($tipo_documento === 'DNI' && !preg_match('/^\d{8}$/', $numero_documento)) {
+            throw new Exception('El DNI debe tener 8 dígitos');
+        }
+        
+        if ($tipo_documento === 'RUC' && !preg_match('/^\d{11}$/', $numero_documento)) {
+            throw new Exception('El RUC debe tener 11 dígitos');
+        }
+        
+        if ($tipo_comprobante === 'factura' && $tipo_documento !== 'RUC') {
+            throw new Exception('Para factura se requiere RUC');
+        }
+        
+        // Validar email si se proporciona
+        if (!empty($email_cliente) && !filter_var($email_cliente, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception('Email inválido');
         }
         
         // Iniciar transacción
         $pdo->beginTransaction();
-        logDebug("Transacción iniciada");
         
-        // Calcular total y preparar detalles
+        // Calcular total y verificar stock
         $total = 0;
         $detalles = [];
         
-        logDebug("Procesando carrito: " . print_r($_SESSION['carrito'], true));
-        
-        foreach ($_SESSION['carrito'] as $id_producto => $cantidad) {
-            $stmt = $pdo->prepare("SELECT * FROM productos WHERE id = ?");
+        foreach ($_SESSION['carrito'] as $id_producto => $item) {
+            if (!is_array($item) || !isset($item['precio'], $item['cantidad'])) {
+                continue;
+            }
+            
+            $precio = floatval($item['precio']);
+            $cantidad = intval($item['cantidad']);
+            
+            if ($cantidad < 1) {
+                throw new Exception('Cantidad inválida para producto ID: ' . $id_producto);
+            }
+            
+            // Verificar stock en tiempo real
+            $stmt = $pdo->prepare("SELECT stock, nombre FROM productos WHERE id = ?");
             $stmt->execute([$id_producto]);
             $producto = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($producto) {
-                // Asegurarse de que el precio sea un número válido
-                $precio = floatval($producto['precio']);
-                $subtotal = $precio * $cantidad;
-                $total += $subtotal;
-                
-                $detalles[] = [
-                    'id_producto' => $id_producto,
-                    'cantidad' => $cantidad,
-                    'precio_unitario' => $precio,
-                    'subtotal' => $subtotal
-                ];
-                
-                logDebug("Producto: {$producto['nombre']}, Precio: $precio, Cantidad: $cantidad, Subtotal: $subtotal");
+            if (!$producto) {
+                throw new Exception('Producto no encontrado: ID ' . $id_producto);
             }
+            
+            if ($producto['stock'] < $cantidad) {
+                throw new Exception('Stock insuficiente para: ' . $producto['nombre'] . 
+                                  '. Disponible: ' . $producto['stock']);
+            }
+            
+            $subtotal = $precio * $cantidad;
+            $total += $subtotal;
+            
+            $detalles[] = [
+                'id_producto' => $id_producto,
+                'cantidad' => $cantidad,
+                'precio_unitario' => $precio,
+                'subtotal' => $subtotal,
+                'nombre' => $producto['nombre']
+            ];
         }
         
-        logDebug("Total calculado: $total");
+        if ($total <= 0) {
+            throw new Exception('Error en el cálculo del total');
+        }
         
         // Generar número de comprobante
         $prefijo = $tipo_comprobante === 'boleta' ? 'B' : 'F';
-        $numero_comprobante = $prefijo . '-' . str_pad(rand(1, 999999), 6, '0', STR_PAD_LEFT);
-        logDebug("Número de comprobante generado: $numero_comprobante");
+        $fecha = date('Ymd');
+        $secuencia = str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+        $numero_comprobante = $prefijo . '-' . $fecha . '-' . $secuencia;
         
-        // Insertar venta
-        $sql = "INSERT INTO ventas (id_usuario, total, tipo_documento, numero_documento, nombre_cliente, tipo_documento_cliente, numero_documento_cliente, email_cliente, telefono_cliente, direccion_cliente) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $pdo->prepare($sql);
-        $result = $stmt->execute([1, $total, $tipo_comprobante, $numero_comprobante, $nombre_cliente, $tipo_documento, $numero_documento, $email_cliente, $telefono_cliente, $direccion_cliente]);
+        // Insertar venta (usar id_usuario del sistema)
+        $sql_venta = "INSERT INTO ventas (
+            id_usuario, total, tipo_documento, numero_documento,
+            nombre_cliente, tipo_documento_cliente, numero_documento_cliente,
+            email_cliente, telefono_cliente, direccion_cliente, fecha
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        
+        $stmt = $pdo->prepare($sql_venta);
+        $result = $stmt->execute([
+            $id_usuario,  // <-- Aquí está la corrección
+            $total,
+            $tipo_comprobante,
+            $numero_comprobante,
+            $nombre_cliente,
+            $tipo_documento,
+            $numero_documento,
+            $email_cliente,
+            $telefono_cliente,
+            $direccion_cliente
+        ]);
         
         if (!$result) {
-            logDebug("Error al insertar venta: " . print_r($stmt->errorInfo(), true));
-            throw new Exception("Error al insertar venta");
+            $errorInfo = $stmt->errorInfo();
+            throw new Exception('Error al insertar venta: ' . ($errorInfo[2] ?? 'Error desconocido'));
         }
         
         $id_venta = $pdo->lastInsertId();
-        logDebug("Venta insertada con ID: $id_venta");
         
-        // Insertar detalles de venta
+        if (!$id_venta) {
+            throw new Exception('No se pudo obtener el ID de la venta');
+        }
+        
+        // Insertar detalles y actualizar stock
         foreach ($detalles as $detalle) {
-            $sql = "INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?)";
-            $stmt = $pdo->prepare($sql);
+            // Insertar detalle
+            $sql_detalle = "INSERT INTO detalle_ventas (
+                id_venta, id_producto, cantidad, precio_unitario, subtotal
+            ) VALUES (?, ?, ?, ?, ?)";
+            
+            $stmt = $pdo->prepare($sql_detalle);
             $result = $stmt->execute([
                 $id_venta,
                 $detalle['id_producto'],
@@ -112,37 +171,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ]);
             
             if (!$result) {
-                logDebug("Error al insertar detalle: " . print_r($stmt->errorInfo(), true));
-                throw new Exception("Error al insertar detalle");
+                throw new Exception('Error al insertar detalle de venta');
+            }
+            
+            // Actualizar stock
+            $sql_update_stock = "UPDATE productos SET stock = stock - ? WHERE id = ?";
+            $stmt = $pdo->prepare($sql_update_stock);
+            $result = $stmt->execute([$detalle['cantidad'], $detalle['id_producto']]);
+            
+            if (!$result) {
+                throw new Exception('Error al actualizar stock');
             }
         }
         
-        logDebug("Todos los detalles insertados correctamente");
-        
         // Confirmar transacción
         $pdo->commit();
-        logDebug("Transacción confirmada");
         
         // Limpiar carrito
         unset($_SESSION['carrito']);
-        logDebug("Carrito limpiado");
         
-        // Devolver éxito
-        echo json_encode(['success' => true, 'id_venta' => $id_venta]);
+        // Responder éxito
+        echo json_encode([
+            'success' => true,
+            'message' => 'Compra procesada exitosamente',
+            'id_venta' => $id_venta,
+            'numero_comprobante' => $numero_comprobante,
+            'total' => number_format($total, 2)
+        ]);
         
     } catch (Exception $e) {
-        // Revertir cambios en caso de error
+        // Revertir transacción
         if (isset($pdo) && $pdo->inTransaction()) {
             $pdo->rollBack();
-            logDebug("Transacción revertida debido a error: " . $e->getMessage());
         }
         
-        echo json_encode(['success' => false, 'message' => 'Error al procesar la compra: ' . $e->getMessage()]);
+        // Log del error
+        error_log('Error en procesar_compra: ' . $e->getMessage());
+        
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
     }
     exit;
-} else {
-    logDebug("Método no permitido: " . $_SERVER['REQUEST_METHOD']);
-    echo json_encode(['success' => false, 'message' => 'Método no permitido']);
-    exit;
 }
+
+echo json_encode(['success' => false, 'message' => 'Método no permitido']);
 ?>
