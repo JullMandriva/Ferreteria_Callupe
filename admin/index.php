@@ -72,6 +72,12 @@ include '../includes/header.php';
                             <i class="bi bi-envelope me-2"></i> Contactos
                         </a>
                     </li>
+                                </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="reclamos/index.php">
+                            <i class="bi bi-envelope me-2"></i> Reclamos
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link text-danger" href="../logout.php">
                             <i class="bi bi-box-arrow-right me-2"></i> Cerrar Sesión
