@@ -1,0 +1,6 @@
+[15-Dec-2025 21:46:54 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in /home/monteroa/consentimiento.monteroampsoluciones.com/includes/header.php on line 2
+[15-Dec-2025 21:47:20 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in /home/monteroa/consentimiento.monteroampsoluciones.com/includes/header.php on line 2
+[15-Dec-2025 21:47:33 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in /home/monteroa/consentimiento.monteroampsoluciones.com/includes/header.php on line 2
+[15-Dec-2025 21:47:38 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in /home/monteroa/consentimiento.monteroampsoluciones.com/includes/header.php on line 2
+[15-Dec-2025 21:47:54 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in /home/monteroa/consentimiento.monteroampsoluciones.com/includes/header.php on line 2
+[19-Dec-2025 04:17:44 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in /home/monteroa/consentimiento.monteroampsoluciones.com/includes/header.php on line 2
