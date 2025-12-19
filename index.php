@@ -60,18 +60,8 @@ $productos = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
     
-    <!-- Alertas de quiebre de stock -->
-    <?php 
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM productos WHERE stock <= stock_minimo");
-    $quiebre = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if ($quiebre['total'] > 0): ?>
-        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <strong>¡Atención!</strong> Hay <?php echo $quiebre['total']; ?> productos con stock bajo.
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <?php endif; ?>
+   <!-- Alertas de quiebre de stock -->
+   
     
     <!-- Categorías -->
     <div class="mb-4">
