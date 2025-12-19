@@ -1,0 +1,91 @@
+/* css/estilos.css */
+/* Estilos de prueba para confirmar que se carga */
+
+/* 1. Fondo rojo para confirmar carga - BORRAR después */
+body {
+    background-color: #f0f8ff !important;
+}
+
+/* 2. Estilos para el formulario de reclamos */
+.card {
+    border: 3px solid #0d6efd !important;
+    border-radius: 15px !important;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #0d6efd, #0b5ed7) !important;
+    font-size: 1.2rem !important;
+    padding: 1.2rem !important;
+}
+
+/* 3. Campos del formulario */
+.form-control, .form-select {
+    border: 2px solid #dee2e6 !important;
+    border-radius: 8px !important;
+    padding: 0.75rem !important;
+    transition: all 0.3s !important;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* 4. Botones */
+.btn-primary {
+    background-color: #0d6efd !important;
+    border: none !important;
+    padding: 0.75rem 2rem !important;
+    font-weight: 600 !important;
+    transition: all 0.3s !important;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 5. Alertas */
+.alert {
+    border-radius: 10px !important;
+    border: none !important;
+}
+
+.alert-info {
+    background-color: #e7f1ff !important;
+    border-left: 5px solid #0d6efd !important;
+}
+
+/* 6. Títulos de secciones */
+h5.border-bottom {
+    border-bottom: 3px solid #0d6efd !important;
+    padding-bottom: 10px !important;
+    color: #333 !important;
+}
+
+/* 7. Checkboxes */
+.form-check-input:checked {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+}
+
+/* 8. Responsive */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px !important;
+    }
+    
+    .row {
+        margin: 0 !important;
+    }
+    
+    .col-md-6, .col-md-3 {
+        padding: 5px !important;
+    }
+    
+    .btn-lg {
+        width: 100% !important;
+        margin-top: 10px !important;
+    }
+}
